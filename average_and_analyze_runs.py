@@ -6,44 +6,7 @@ from retino_functions import *
 import optparse
 
 
-
-
-def run_get_surface(options):
-     root = options.rootdir
-     animal_id = options.animalid
-     session = options.session
-     project_dir = options.project_dir
-
-     source_root = os.path.join(root,'raw_data',project_dir,animal_id,session)
-     target_root = os.path.join(root,'analyzed_data',project_dir,animal_id,session)
-
-     get_surface(source_root, target_root, animal_id, session)
-
-def run_qual_control(options):
-    root = options.rootdir
-    animal_id = options.animalid
-    session = options.session
-    project_dir = options.project_dir
-    run_list = options.run_list
-
-    source_root = os.path.join(root,'raw_data',project_dir,animal_id,session)
-    target_root = os.path.join(root,'analyzed_data',project_dir,animal_id,session)
-
-    quick_quality_control(source_root, target_root, animal_id, session, run_list)
-
-def run_motion_correction(options):
-    root = options.rootdir
-    animal_id = options.animalid
-    session = options.session
-    project_dir = options.project_dir
-    run_list = options.run_list
-
-    source_root = os.path.join(root,'raw_data',project_dir,animal_id,session)
-    target_root = os.path.join(root,'analyzed_data',project_dir,animal_id,session)
-
-    perform_motion_registration(source_root,target_root,animal_id,session,run_list,run_list[0],False)
-
-def run_analysis(options):
+def run_timecourse_analysis(options):
       root = options.rootdir
       animal_id = options.animalid
       session = options.session
@@ -53,6 +16,33 @@ def run_analysis(options):
       source_root = os.path.join(root,'raw_data',project_dir,animal_id,session)
       target_root = os.path.join(root,'analyzed_data',project_dir,animal_id,session)
 
+
+      print(run_list)
+      framerate, stimfreq = get_run_parameters(source_root, animal_id, session, run_list[0])
+
+
+      interp = options.interpolate
+      exclude_edges= options.exclude_edges
+      rolling_mean= options.rolling_mean
+      time_average = options.time_average
+      if time_average is not None:
+            time_average = int(time_average)
+      motion = options.motion
+
+      analyze_complete_timecourse(source_root, target_root, animal_id, session, run_list, stimfreq, framerate, \
+                            interp, exclude_edges, rolling_mean, \
+                            motion,time_average, groupPeriods = 2, loadCorrectedFrames=False,\
+                            SDmaps=True,makeSingleRunMovies=False,makeSingleCondMovies=True)
+
+def run_phase_analysis(options):
+      root = options.rootdir
+      animal_id = options.animalid
+      session = options.session
+      project_dir = options.project_dir
+      run_list = options.run_list
+
+      source_root = os.path.join(root,'raw_data',project_dir,animal_id,session)
+      target_root = os.path.join(root,'analyzed_data',project_dir,animal_id,session)
 
 
       framerate, stimfreq = get_run_parameters(source_root, animal_id, session, run_list[0])
@@ -66,11 +56,9 @@ def run_analysis(options):
             time_average = int(time_average)
       motion = options.motion
 
-      # #ANALYZE PHASE PER RUN
-      analyze_periodic_data_per_run(source_root, target_root, animal_id,session, run_list, stimfreq, framerate, \
-          interp, exclude_edges, rolling_mean, motion,saveImages=True,\
-          loadCorrectedFrames=False,averageFrames=time_average,stimType='bar')
-      
+      analyze_periodic_data_from_timecourse(source_root, target_root, animal_id, session, run_list, stimfreq, framerate, \
+                            interp, exclude_edges, rolling_mean, \
+                            motion,time_average, stimType = 'bar')
 
 def extract_options(options):
 
@@ -102,24 +90,13 @@ def extract_options(options):
 
 def main(options):
       options = extract_options(options)
-      print('Getting surface image...')
-      run_get_surface(options)
+      print('Averaging and analyzing runs...')
+      run_timecourse_analysis(options)
       print('Done!')
-
-      print('Running quick quality control...')
-      run_qual_control(options)
+      print('Analyzing phase from average timecourse...')
+      run_phase_analysis(options)
       print('Done!')
-
-      if options.motion:
-        print('Running motion correction routines...')
-        run_motion_correction(options)
-        print('Done!')
-
-      print('Running analysis routines')
-      run_analysis(options)
-      print('Done!')
-
-
 
 if __name__ == '__main__':
     main(sys.argv[1:])
+

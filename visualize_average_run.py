@@ -1,7 +1,9 @@
+
 import os
 cwd = os.getcwd()
 import sys
 sys.path.insert(0, cwd)
+print('here')
 from retino_functions import * 
 
 import optparse
@@ -37,10 +39,10 @@ def visualize_run(options):
     flip = options.flip
 
     analysis_root = os.path.join(target_root,'Analyses')
-    analysis_dir=get_analysis_path_phase(analysis_root, stimfreq, interp, exclude_edges, rolling_mean, \
-    motion, time_average)
+    analysis_dir=get_analysis_path_timecourse(analysis_root, interp, exclude_edges, rolling_mean, \
+        motion, time_average)
 
-    visualize_single_run(source_root, target_root, animalid, session, run_list, smooth_fwhm, ratio_thresh, analysis_dir, motion,flip)
+    visualize_average_run(source_root, target_root, animalid, session, run_list, smooth_fwhm, ratio_thresh, analysis_dir, motion,flip)
 
 def extract_options(options):
 
@@ -76,7 +78,9 @@ def extract_options(options):
 
 def main(options):
       options = extract_options(options)
+      print('Making pretty images...')
       visualize_run(options)
+      print('Done!')
 
 
 if __name__ == '__main__':

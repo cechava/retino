@@ -6,7 +6,7 @@ Created on Tue Jan 30 2018
 @author: cesarechavarria
 """
 
-print('here2')
+print('Importing retino functions...')
 
 import cv2
 import os
@@ -23,13 +23,15 @@ from matplotlib import colors
 import time
 import shutil
 
-__version__ = '0.45'
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # MISCELANOUS
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+def get_comma_separated_args(option, opt, value, parser):
+  setattr(parser.values, option.dest, value.split(','))
 
 def cart2pol(x, y):
     rho = np.sqrt(x**2 + y**2)
@@ -623,12 +625,6 @@ def perform_motion_registration(sourceRoot,targetRoot,animalID, sessID,runList,r
         if not os.path.exists(motionMovieDir):
             os.makedirs(motionMovieDir)
 
-    #OUTPUT TEXT FILE WITH PACKAGE VERSION
-	outFile=motionFileDir+'analysis_version_info.txt'
-	versionTextFile = open(outFile, 'w+')
-	versionTextFile.write('WiPy version '+__version__+'\n')
-	versionTextFile.close()
-
     #GET REFFERNCE FRAME
     imRef=get_reference_frame(sourceRoot,animalID,sessID,refRun)
     szY,szX=imRef.shape
@@ -787,6 +783,285 @@ def make_movie_from_stack(rootDir,frameStack,frameRate=24,movFile='test.mp4'):
  
 
 
+
+
+def visualize_single_run(sourceRoot, targetRoot, animalID, sessID, runList, smooth_fwhm=None, magRatio_thresh=None,\
+    analysisDir=None,motionCorrection=False, flip = False, modify_range=True, mask =None):
+
+    anatSource=os.path.join(targetRoot,'Surface')
+    motionDir=os.path.join(targetRoot,'Motion')
+    motionFileDir=os.path.join(motionDir, 'Registration')
+
+
+    fileInDir=os.path.join(analysisDir,'SingleRunData','Files')
+    figOutDirRoot=os.path.join(analysisDir,'SingleRunData','Figures')
+    fileOutDirRoot=os.path.join(analysisDir,'SingleRunData','Files')
+    #for file name
+    smoothString=''
+    threshString=''
+
+    condList = get_condition_list(sourceRoot,animalID,sessID,runList)
+
+    # runCount = 0
+    # run = runList[runCount]
+
+    for runCount,run in enumerate(runList):
+        print('Current Run: %s'%(run))
+        cond = condList[runCount]
+        figOutDir=os.path.join(figOutDirRoot,'cond%s'%(str(int(cond))))
+        if not os.path.exists(figOutDir):
+            os.makedirs(figOutDir)
+
+        #LOAD MAPS
+        fileName = '%s_%s_map.npz'%(sessID, run)
+        f=np.load(os.path.join(fileInDir,fileName))
+        phaseMap=f['phaseMap']
+        magRatioMap=f['magRatioMap']
+
+        if smooth_fwhm is not None:
+            phaseMap=smooth_array(phaseMap,smooth_fwhm,phaseArray=True)
+            magRatioMap=smooth_array(magRatioMap,smooth_fwhm)
+            smoothString='_fwhm_'+str(smooth_fwhm)
+
+
+        #set phase map range for visualization
+        if modify_range:
+            phaseMapDisplay=np.copy(phaseMap)
+            phaseMapDisplay[phaseMap<0]=-phaseMap[phaseMap<0]
+            phaseMapDisplay[phaseMap>0]=(2*np.pi)-phaseMap[phaseMap>0]
+
+            rangeMin=0
+            rangeMax=2*np.pi
+        else:
+            phaseMapDisplay=np.copy(phaseMap)
+            rangeMin=-np.pi
+            rangeMax=np.pi
+
+
+        #apply threshhold
+        if magRatio_thresh is not None:
+            phaseMapDisplay[magRatioMap<magRatio_thresh]=np.nan
+            threshString='_thresh_'+str(magRatio_thresh)
+        else:
+            magRatiothresh = np.max(magRatioMap)
+            phaseMapDisplay[magRatioMap<magRatio_thresh]=np.nan
+            threshString='_thresh_'+str(magRatio_thresh)
+
+        #load surface for overlay
+        #READ IN SURFACE
+
+        
+        imFile=anatSource+'/frame0_registered.tiff'
+        if not os.path.isfile(imFile):
+            imFile=anatSource+'/frame0.tiff'
+
+        imSurf=cv2.imread(imFile,-1)
+        szY,szX=imSurf.shape
+        imSurf=np.true_divide(imSurf,2**12)*2**8
+
+        if flip:
+            print('Flipping Images')
+            imSurf = np.fliplr(imSurf)
+            phaseMapDisplay = np.fliplr(phaseMapDisplay)
+
+        if motionCorrection:
+            #LOAD MOTION CORRECTED BOUNDARIES
+            inFile=motionFileDir+'/'+sessID+'_motionCorrectedBoundaries.npz'
+            f=np.load(inFile)
+            boundaries=f['boundaries']
+            padDown=int(boundaries[0])
+            padUp=int(szY-boundaries[1])
+            padLeft=int(boundaries[2])
+            padRight=int(szX-boundaries[3])
+
+            phaseMapDisplay=np.pad(phaseMapDisplay,((padDown,padUp),(padLeft,padRight)),'constant',constant_values=((np.nan, np.nan),(np.nan,np.nan)))
+        #plot
+        fileName = 'overlay_images_%s_%s%s%s.png'%(sessID,run,smoothString,threshString)
+
+
+        dpi = 80
+        szY,szX = imSurf.shape
+        # What size does the figure need to be in inches to fit the image?
+        figsize = szX / float(dpi), szY / float(dpi)
+
+        # Create a figure of the right size with one axes that takes up the full figure
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_axes([0, 0, 1, 1])
+
+        # Hide spines, ticks, etc.
+        ax.axis('off')
+
+        ax.imshow(imSurf, 'gray')
+        ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin,vmax=rangeMax)
+
+        fig.savefig(os.path.join(figOutDir,fileName), dpi=dpi, transparent=True)
+        plt.close()
+
+        #output masked image as well, if indicated
+        if mask is not None:
+            #load mask
+            maskFile=targetRoot+'/Sessions/'+sessID+'/masks/Files/'+mask+'.npz'
+            f=np.load(maskFile)
+            maskM=f['maskM']
+
+            #apply mask
+            phaseMapDisplay[maskM==0]=np.nan
+
+            #plot
+            outFile=outFile = '%s_%s%s%s_phaseMap_mask_%s_image.png'%\
+            (figOutDir+sessID,run,smoothString,threshString,mask)
+
+            #Create a figure of the right size with one axes that takes up the full figure
+            fig = plt.figure(figsize=figsize)
+            ax = fig.add_axes([0, 0, 1, 1])
+
+            # Hide spines, ticks, etc.
+            ax.axis('off')
+            ax.imshow(imSurf, 'gray')
+            ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin,vmax=rangeMax)
+
+            fig.savefig(outFile, dpi=dpi, transparent=True)
+            plt.close()
+
+def visualize_average_run(sourceRoot, targetRoot, animalID, sessID, runList, smooth_fwhm=None, magRatio_thresh=None,\
+    analysisDir=None,motionCorrection=False, flip = False, modify_range=True, mask =None):
+        anatSource=os.path.join(targetRoot,'Surface')
+        motionDir=os.path.join(targetRoot,'Motion')
+        motionFileDir=os.path.join(motionDir, 'Registration')
+
+
+        fileInDir=os.path.join(analysisDir,'phase_decoding','Files')
+        figOutDirRoot=os.path.join(analysisDir,'phase_decoding','Figures')
+        fileOutDirRoot=os.path.join(analysisDir,'phase_decoding','Files')
+
+
+        smoothString=''
+        threshString=''
+
+        condList = get_condition_list(sourceRoot,animalID, sessID,runList)
+
+
+        for condCount,cond in enumerate(np.unique(condList)):
+            print('Current Condition: %s'%(cond))
+            cond = condList[condCount]
+            figOutDir=os.path.join(figOutDirRoot,'cond%s'%(str(int(cond))))
+            if not os.path.exists(figOutDir):
+                os.makedirs(figOutDir)
+
+            #LOAD MAPS
+            fileName = '%s_cond%i_maps.npz'%(sessID, cond)
+            f=np.load(os.path.join(fileInDir,fileName))
+            phaseMap=f['phaseMap']
+            magRatioMap=f['magRatioMap']
+
+            if smooth_fwhm is not None:
+                phaseMap=smooth_array(phaseMap,smooth_fwhm,phaseArray=True)
+                magRatioMap=smooth_array(magRatioMap,smooth_fwhm)
+                smoothString='_fwhm_'+str(smooth_fwhm)
+
+
+            #set phase map range for visualization
+            if modify_range:
+                phaseMapDisplay=np.copy(phaseMap)
+                phaseMapDisplay[phaseMap<0]=-phaseMap[phaseMap<0]
+                phaseMapDisplay[phaseMap>0]=(2*np.pi)-phaseMap[phaseMap>0]
+
+                rangeMin=0
+                rangeMax=2*np.pi
+            else:
+                phaseMapDisplay=np.copy(phaseMap)
+                rangeMin=-np.pi
+                rangeMax=np.pi
+
+
+            #apply threshhold
+            if magRatio_thresh is not None:
+                phaseMapDisplay[magRatioMap<magRatio_thresh]=np.nan
+                threshString='_thresh_'+str(magRatio_thresh)
+            else:
+                magRatiothresh = np.max(magRatioMap)
+                phaseMapDisplay[magRatioMap<magRatio_thresh]=np.nan
+                threshString='_thresh_'+str(magRatio_thresh)
+
+
+            #load surface for overlay
+            #READ IN SURFACE
+
+
+            imFile=anatSource+'/frame0_registered.tiff'
+            if not os.path.isfile(imFile):
+                imFile=anatSource+'/frame0.tiff'
+
+            imSurf=cv2.imread(imFile,-1)
+            szY,szX=imSurf.shape
+            imSurf=np.true_divide(imSurf,2**12)*2**8
+
+            if flip:
+                print('Flipping Images')
+                imSurf = np.fliplr(imSurf)
+                phaseMapDisplay = np.fliplr(phaseMapDisplay)
+
+            if motionCorrection:
+                #LOAD MOTION CORRECTED BOUNDARIES
+                inFile=motionFileDir+'/'+sessID+'_motionCorrectedBoundaries.npz'
+                f=np.load(inFile)
+                boundaries=f['boundaries']
+                padDown=int(boundaries[0])
+                padUp=int(szY-boundaries[1])
+                padLeft=int(boundaries[2])
+                padRight=int(szX-boundaries[3])
+
+                phaseMapDisplay=np.pad(phaseMapDisplay,((padDown,padUp),(padLeft,padRight)),'constant',constant_values=((np.nan, np.nan),(np.nan,np.nan)))
+            #plot
+            fileName = 'overlay_images_%s_cond%s%s%s.png'%(sessID,str(int(cond)),smoothString,threshString)
+
+
+            dpi = 80
+            szY,szX = imSurf.shape
+            # What size does the figure need to be in inches to fit the image?
+            figsize = szX / float(dpi), szY / float(dpi)
+
+            # Create a figure of the right size with one axes that takes up the full figure
+            fig = plt.figure(figsize=figsize)
+            ax = fig.add_axes([0, 0, 1, 1])
+
+            # Hide spines, ticks, etc.
+            ax.axis('off')
+
+            ax.imshow(imSurf, 'gray')
+            ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin,vmax=rangeMax)
+
+            fig.savefig(os.path.join(figOutDir,fileName), dpi=dpi, transparent=True)
+            plt.close()
+
+            #output masked image as well, if indicated
+            if mask is not None:
+                #load mask
+                maskFile=targetRoot+'/masks/Files/'+mask+'.npz'
+                f=np.load(maskFile)
+                maskM=f['maskM']
+
+                #apply mask
+                phaseMapDisplay[maskM==0]=np.nan
+
+                #plot
+                outFile=outFile = '%s_cond%s%s%s_phaseMap_mask_%s_image.png'%\
+                (figOutDir+sessID,str(int(cond)),smoothString,threshString,mask)
+
+                #Create a figure of the right size with one axes that takes up the full figure
+                fig = plt.figure(figsize=figsize)
+                ax = fig.add_axes([0, 0, 1, 1])
+
+                # Hide spines, ticks, etc.
+                ax.axis('off')
+                ax.imshow(imSurf, 'gray')
+                ax.imshow(phaseMapDisplay,'nipy_spectral',alpha=.5,vmin=rangeMin,vmax=rangeMax)
+
+                fig.savefig(outFile, dpi=dpi, transparent=True)
+                plt.close()
+
+
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # PERIODIC STIM CODE
@@ -819,9 +1094,9 @@ def get_analysis_path_phase(analysisRoot, targetFreq, interp=False, excludeEdges
     fwhmString = ''
     #DEFINE DIRECTORIES
     if motionCorrection:
-        imgOperationDir='motionCorrection'
+        imgOperationDir='motion_corrected'
     else:
-        imgOperationDir='noMotionCorrection'
+        imgOperationDir='not_motion_corrected'
 
 
     procedureDir=''
@@ -868,11 +1143,6 @@ def analyze_periodic_data_per_run(sourceRoot, targetRoot, animalID,sessID, runLi
         figOutDirRoot=os.path.join(analysisDir,'SingleRunData','Figures')
 
 
-    #    # OUTPUT TEXT FILE WITH PACKAGE VERSION
-    # outFile=fileOutDir+'analysis_version_info.txt'
-    # versionTextFile = open(outFile, 'w+')
-    # versionTextFile.write('WiPy version '+__version__+'\n')
-    # versionTextFile.close()
 
     condList = get_condition_list(sourceRoot,animalID,sessID,runList)
     if interp:
@@ -1385,9 +1655,9 @@ def get_analysis_path_timecourse(analysisRoot,  interpolate=False, excludeEdges=
     imgOperationDir=''
     #DEFINE DIRECTORIES
     if motionCorrection:
-        imgOperationDir=imgOperationDir+'motionCorrection'
+        imgOperationDir=imgOperationDir+'motion_corrected'
     else:
-        imgOperationDir=imgOperationDir+'noMotionCorrection'
+        imgOperationDir=imgOperationDir+'not_motion_corrected'
 
 
     procedureDir=''
@@ -1441,7 +1711,7 @@ def interpolate_array(t0,array0,tNew):
     
     return arrayNew
 
-def analyze_complete_timecourse(sourceRoot, targetRoot, sessID, runList, stimFreq, frameRate, \
+def analyze_complete_timecourse(sourceRoot, targetRoot, animalID, sessID, runList, stimFreq, frameRate, \
                                interp=False, excludeEdges=False, removeRollingMean=False, \
                                motionCorrection=False,averageFrames=None, groupPeriods = None, loadCorrectedFrames=True,\
                                SDmaps=False,makeSingleRunMovies=False,makeSingleCondMovies=True):
@@ -1449,38 +1719,32 @@ def analyze_complete_timecourse(sourceRoot, targetRoot, sessID, runList, stimFre
 
     # DEFINE DIRECTORIES
 
-    motionDir=targetRoot+'/Sessions/'+sessID+'/Motion/';
+    motionDir=targetRoot+'/Motion/';
     motionFileDir=motionDir+'Registration/'
 
-    analysisRoot=targetRoot+'/Sessions/'+sessID+'/Analyses/'
+    analysisRoot=targetRoot+'/Analyses/'
     analysisDir=get_analysis_path_timecourse(analysisRoot, interp, excludeEdges, removeRollingMean, \
         motionCorrection,averageFrames)
 
-    fileOutDir=analysisDir+'SingleConditionData/Files/'
+    fileOutDir=analysisDir+'Files/'
     if not os.path.exists(fileOutDir):
         os.makedirs(fileOutDir)
 
-    #OUTPUT TEXT FILE WITH PACKAGE VERSION
-    outFile=fileOutDir+'analysis_version_info.txt'
-    versionTextFile = open(outFile, 'w+')
-    versionTextFile.write('WiPy version '+__version__+'\n')
-    versionTextFile.close()
-
 
     if makeSingleCondMovies:
-        avgMovieOutDir=analysisDir+'SingleConditionData/Movies/'
+        avgMovieOutDir=analysisDir+'/Movies/'
         if not os.path.exists(avgMovieOutDir):
             os.makedirs(avgMovieOutDir) 
     if makeSingleRunMovies:
-        singleRunMovieOutDir=analysisDir+'SingleRunData/Movies/'
+        singleRunMovieOutDir=analysisDir+'/Movies/'
         if not os.path.exists(singleRunMovieOutDir):
             os.makedirs(singleRunMovieOutDir) 
     if SDmaps:
-        figOutDir=analysisDir+'SingleConditionData/Figures/'
+        figOutDir=analysisDir+'/Figures/'
         if not os.path.exists(figOutDir):
             os.makedirs(figOutDir) 
 
-    condList = get_condition_list(sourceRoot,sessID,runList)
+    condList = get_condition_list(sourceRoot,animalID,sessID,runList)
     if interp:
         #GET INTERPOLATION TIME
         newStartT,newEndT=get_interp_extremes(sourceRoot,animalID,sessID,runList,stimFreq)
@@ -1496,7 +1760,7 @@ def analyze_complete_timecourse(sourceRoot, targetRoot, sessID, runList, stimFre
             run = runList[idx]
             print('run='+str(run))
             #DEFINE DIRECTORIES
-            runFolder=glob.glob(sourceRoot+sessID+'_run'+str(run)+'_*')
+            runFolder=glob.glob('%s/%s_%s_%s_*'%(sourceRoot,animalID,sessID,run))
             frameFolder=runFolder[0]+"/frames/"
             planFolder=runFolder[0]+"/plan/"
             frameTimes,frameCond,frameCount = get_frame_times(planFolder)
@@ -1507,7 +1771,7 @@ def analyze_complete_timecourse(sourceRoot, targetRoot, sessID, runList, stimFre
 
                 if loadCorrectedFrames:
                     #LOAD MOTION CORRECTED FRAMES
-                    inFile=motionFileDir+sessID+'_run'+str(run)+'_correctedFrames.npz'
+                    inFile=motionFileDir+sessID+'_'+run+'_correctedFrames.npz'
                     f=np.load(inFile)
                     frameArray=f['correctedFrameArray']
                 else:
@@ -1523,7 +1787,7 @@ def analyze_complete_timecourse(sourceRoot, targetRoot, sessID, runList, stimFre
                         frameArray[:,:,f]=np.copy(im0)
 
                     #-> load warp matrices
-                    inFile=motionFileDir+sessID+'_run'+str(run)+'_motionRegistration.npz'
+                    inFile=motionFileDir+sessID+'_'+run+'_motionRegistration.npz'
                     f=np.load(inFile)
                     warpMatrices=f['warpMatrices']
 
@@ -1559,7 +1823,8 @@ def analyze_complete_timecourse(sourceRoot, targetRoot, sessID, runList, stimFre
             if interp:
                 print('Interpolating...')
                 frameArray=interpolate_array(frameTimes,frameArray,newTimes)
-                frameTimes=newTimes.astype('uint16')
+                frameTimes=newTimes
+
             if counter == 0:   
                 meanPixelValue=np.mean(frameArray,1)
             else:
@@ -1710,39 +1975,34 @@ def analyze_complete_timecourse(sourceRoot, targetRoot, sessID, runList, stimFre
 
         del frameArrayAvg
     
-def analyze_periodic_data_from_timecourse(sourceRoot, targetRoot, sessID, runList, stimFreq, frameRate, \
+def analyze_periodic_data_from_timecourse(sourceRoot, targetRoot,animalID, sessID, runList, stimFreq, frameRate, \
     interp=False, excludeEdges=False, removeRollingMean=False, \
     motionCorrection=False, averageFrames=None,saveImages=True,mask=None,\
     stimType=None):
 
     
-    analysisRoot=targetRoot+'/Sessions/'+sessID+'/Analyses/';
+    analysisRoot=targetRoot+'/Analyses/';
     analysisDir=get_analysis_path_timecourse(analysisRoot, interp, excludeEdges, removeRollingMean, \
     motionCorrection,averageFrames)
 
     # DEFINE DIRECTORIES
-    fileInDir=analysisDir+'SingleConditionData/Files/'
-    anatSource=targetRoot+'Sessions/'+sessID+'/Surface/'
+    fileInDir=analysisDir+'Files/'
+    anatSource=targetRoot+'/Surface/'
 
-    motionDir=targetRoot+'/Sessions/'+sessID+'/Motion/'
+    motionDir=targetRoot+'/Motion/'
     motionFileDir=motionDir+'Registration/'
 
-    analysisDir=analysisDir+'phaseDecoding/'
-    fileOutDir=analysisDir+'SingleConditionData/Files/'
+    analysisDir=analysisDir+'/phase_decoding/'
+    fileOutDir=analysisDir+'/Files/'
     if not os.path.exists(fileOutDir):
         os.makedirs(fileOutDir)
 
     if saveImages:
-        figOutDirRoot=analysisDir+'SingleConditionData/Figures/'
+        figOutDirRoot=analysisDir+'/Figures/'
 
-      #  OUTPUT TEXT FILE WITH PACKAGE VERSION
-    outFile=fileOutDir+'analysis_version_info.txt'
-    versionTextFile = open(outFile, 'w+')
-    versionTextFile.write('WiPy version '+__version__+'\n')
-    versionTextFile.close()
-            
+
     #GET CONDITIONS AVAILABLE
-    condList = get_condition_list(sourceRoot,sessID,runList)
+    condList = get_condition_list(sourceRoot,animalID,sessID,runList)
 
     for (condCount,cond) in enumerate(np.unique(condList)):
         print('cond='+str(cond))
@@ -1758,7 +2018,7 @@ def analyze_periodic_data_from_timecourse(sourceRoot, targetRoot, sessID, runLis
         inFile=fileInDir+'cond'+str(cond)+'_averageTimeCourse.npz'
         f=np.load(inFile)
         frameArray=f['frameArrayAvg']
-        frameTimes=f['frameTimes'].astype('uint16')
+        frameTimes=f['frameTimes']
         szY=f['szY']
         szX=f['szX']
         meanPixelValue=f['meanPixelValue']
@@ -2034,7 +2294,7 @@ def analyze_periodic_data_from_timecourse(sourceRoot, targetRoot, sessID, runLis
             #output masked image as well, if indicated
             if mask is not None:
                 #load mask
-                maskFile=targetRoot+'/Sessions/'+sessID+'/masks/Files/'+mask+'.npz'
+                maskFile=targetRoot+'/masks/Files/'+mask+'.npz'
                 f=np.load(maskFile)
                 maskM=f['maskM']
 
