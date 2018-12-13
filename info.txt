@@ -1,0 +1,4 @@
+analyze_runs.py - this script analyzes individual runs separately. it also gets the image of the surface, performs a basic quality control check so the user can make sure that there wasn't an awful lot of movement between runs or shit data was acquired. the script also performs motion registration and correction, if indicated.
+
+
+visualize_runs.py - this script visualizes phase map for individual runs separately. Specifically, we smooth the phase map and set a threshold based on the mag ratio map.
