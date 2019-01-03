@@ -6,6 +6,7 @@
 conda create env -f [filename].yml
 ```
 
+* for some reason libtiff not properly installing from retino_acq.yml file.... will troubleshoot later
 
 # Acquisition
 
