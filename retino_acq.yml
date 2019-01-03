@@ -40,5 +40,5 @@ dependencies:
   - python-dateutil==2.6.1
   - pytz==2017.3
   - subprocess32==3.2.7
-prefix: /home/labuser/anaconda2/envs/retino
+prefix: /home/labuser/anaconda2/envs/retino_acq
 

@@ -2,7 +2,7 @@
 #TODO: INSERT HEADER 
 #blocked design
 from psychopy import visual, event, core, monitors, logging
-print('1')
+
 from pvapi import PvAPI, Camera
 import time
 from scipy.misc import imsave
@@ -10,17 +10,17 @@ import scipy.misc
 import numpy as np
 import multiprocessing as mp
 import threading
-print('2')
+
 from Queue import Queue
 import sys
 import errno
-print('3')
+
 import os
 import optparse
 import StringIO
-print('4')
+
 from libtiff import TIFF
-print('se')
+
 
 #from PIL import Image, ImageSequence
 #import Image, ImageSequence
