@@ -1,0 +1,8 @@
+Screen Size (pixels) X: 1024 
+Screen Size (pixels) Y: 768 
+Bar Width (pixels): 60 
+Cycle Rate (Hz):     0.1300 
+Cycle Period (s):     7.6923 
+Flash Rate (Hz):     0.1300 
+Flash Period (s):     7.6923 
+Number of Cycles: 12 

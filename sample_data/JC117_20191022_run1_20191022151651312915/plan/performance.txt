@@ -1,0 +1,2 @@
+frameRate	 framePeriod	 expDuration	 frameCount	 expectedFrameCount	 missingFrames
+   25.0000	     0.0400	    92.3265	 2308	 2308	 0
