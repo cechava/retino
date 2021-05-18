@@ -8,7 +8,7 @@ The stimulation portion of the software presents visual stimuli and controls the
 \
  **Sample Cortical Tissue Image**
  \
- <img src="./sample_data/sample_frame.tif" width = "218" height = "164">
+ <img src="./sample_data/sample_frame.png" width = "218" height = "164">
  
 
 
