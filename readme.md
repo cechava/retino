@@ -1,4 +1,42 @@
-# Intial Setup
+# Retino package
+
+
+The code contained in this repository implements the stimulation and analysis stages of a phase-encoded protocol to map out retinotopic organization across the visual cortex of rodents. This software was developed and used by Cesar Echavarria for use in his thesis project in the Cox Lab at Harvard University. 
+
+The stimulation portion of the software presents visual stimuli and controls the acquisition of images of cortical tissue. 
+
+\
+ **Sample Cortical Tissue Image**
+ \
+ <img src="./sample_data/JC117_20191022_run1_20191022151651312915/parsed_pupil_size_vs_time.png" width = "218" height = "164">
+ \
+
+
+
+ The analysis portion of the software takes in a stack of timestamped images of the cortex and outputs images reflecting how different regions of the screen map out across the exposed cortical tissue.
+
+\
+ **Sample Retinotopic Map**
+ \
+ <img src="./sample_outpu/maps/azimuth_stimulation_masked_phase_mape.png" width = "218" height = "164">
+ \
+
+Visual stimulation leads to a roughly 2% change in the pixel values of the cortical tissue image. This is too small to be appreciated by looking at the raw images. I normalize the change in pixel values and visualize the 'traveling waves' of neuronal activity to produces moves such as [**these ones**](./sample_output/movie).
+
+## Materials
+
+## Stimulation and Data Acquisition
+
+The stimulation protocol consists of a bar moving across the screen in front of the animal in a periodic fashion. Sample stimulation movies can be found [**here**](./sample_stimulation_movie/). Simultaneously, 
+
+
+```
+python acquisition/Retinotopy_phaseEncoding_imageBar_constantImage.py -i [animal ID] -S [session] --save-images --output-path [path to folder]
+```
+
+
+
+## Intial Setup
 
 1. create environments. Separate environment for acquisition (retino_acq) and analysis (retino_analysis). 
 
@@ -11,6 +49,7 @@ conda create env -f [filename].yml
 # Acquisition
 
 
+
 1. Acquiring a small stack of images at the surface.
 
 ```
@@ -19,9 +58,7 @@ python acqusition/getSurface.py -i [animal ID] -S [session] --save-images --outp
 
 2. Present periodic stimuli (bar with naural images) and present images
 
-```
-python acquisition/Retinotopy_phaseEncoding_imageBar_constantImage.py -i [animal ID] -S [session] --save-images --output-path [path to folder]
-```
+
 
 * Both of these steps can be run by calling a wrapper script edited with proper options
 
