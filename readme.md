@@ -25,6 +25,8 @@ Visual stimulation leads to a roughly 2% change in the pixel values of the corti
 
 ## Materials
 
+Visual stimuli were presented on a [72-inch LED TV](https://www.lg.com/us/tvs/lg-72LM9500-led-tv). Cortical tissue images were acquired with a [tandem-lens epifluoresence macroscope](https://www.sciencedirect.com/science/article/abs/pii/0165027091900382) coupled to a [CCD camera](https://www.alliedvision.com/en/products/cameras/detail/Manta/G-033.html)
+
 ## Stimulation and Data Acquisition
 
 The stimulation protocol consists of a bar moving across the screen in front of the animal in a periodic fashion. Sample stimulation movies can be found [**here**](./sample_stimulation⁩/movie/). A thread to simultaneously acquire images of the cortical tissue is initiated in the same sript.
@@ -33,7 +35,6 @@ The stimulation protocol consists of a bar moving across the screen in front of 
 ```
 python acquisition/Retinotopy_phaseEncoding_imageBar_constantImage.py -i [animal ID] -S [session] --save-images --output-path [path to folder]
 ```
-
 
 
 ## Intial Setup
@@ -46,27 +47,10 @@ conda create env -f [filename].yml
 
 * for some reason libtiff not properly installing from retino_acq.yml file.... will troubleshoot later
 
-# Acquisition
 
+## Analysis Workflow
 
-
-1. Acquiring a small stack of images at the surface.
-
-```
-python acqusition/getSurface.py -i [animal ID] -S [session] --save-images --output-path [path to folder]
-```
-
-2. Present periodic stimuli (bar with naural images) and present images
-
-
-
-* Both of these steps can be run by calling a wrapper script edited with proper options
-
-```
-python acquisition/wrapperScript.py
-```
-
-# Analysis
+**Note** These scripts are intended to be used for data collected within the Cox Lab so they expect a certain folder architecture. An update of the scripts for more general cases will be done later.
 
 1. Analyze individual runs separately
 
