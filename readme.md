@@ -18,7 +18,7 @@ The stimulation portion of the software presents visual stimuli and controls the
 \
  **Sample Retinotopic Map**
  \
- <img src="./sample_outpu/maps/azimuth_stimulation_masked_phase_map.png" width = "218" height = "164">
+ <img src="./sample_output/maps/azimuth_stimulation_masked_phase_map.png" width = "218" height = "164">
  
 
 Visual stimulation leads to a roughly 2% change in the pixel values of the cortical tissue image. This is too small to be appreciated by looking at the raw images. I normalize the change in pixel values and visualize the 'traveling waves' of neuronal activity to produces moves such as [**these ones**](./sample_output/movie).
