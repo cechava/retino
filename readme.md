@@ -8,8 +8,8 @@ The stimulation portion of the software presents visual stimuli and controls the
 \
  **Sample Cortical Tissue Image**
  \
- <img src="./sample_data/JC117_20191022_run1_20191022151651312915/parsed_pupil_size_vs_time.png" width = "218" height = "164">
- \
+ <img src="./sample_data/JC117_20191022_run1_20191022151651312915/sample_frame.tif" width = "218" height = "164">
+ 
 
 
 
@@ -18,8 +18,8 @@ The stimulation portion of the software presents visual stimuli and controls the
 \
  **Sample Retinotopic Map**
  \
- <img src="./sample_outpu/maps/azimuth_stimulation_masked_phase_mape.png" width = "218" height = "164">
- \
+ <img src="./sample_outpu/maps/azimuth_stimulation_masked_phase_map.png" width = "218" height = "164">
+ 
 
 Visual stimulation leads to a roughly 2% change in the pixel values of the cortical tissue image. This is too small to be appreciated by looking at the raw images. I normalize the change in pixel values and visualize the 'traveling waves' of neuronal activity to produces moves such as [**these ones**](./sample_output/movie).
 
@@ -27,7 +27,7 @@ Visual stimulation leads to a roughly 2% change in the pixel values of the corti
 
 ## Stimulation and Data Acquisition
 
-The stimulation protocol consists of a bar moving across the screen in front of the animal in a periodic fashion. Sample stimulation movies can be found [**here**](./sample_stimulation_movie/). Simultaneously, 
+The stimulation protocol consists of a bar moving across the screen in front of the animal in a periodic fashion. Sample stimulation movies can be found [**here**](./sample_stimulation⁩/movie/). A thread to simultaneously acquire images of the cortical tissue is initiated in the same sript.
 
 
 ```
